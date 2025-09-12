@@ -382,7 +382,7 @@ if __name__ == "__main__":
         self.app_id = app_id
         self.app_secret = app_secret
         self.redirect_uri = redirect_uri
-    )
+    
     bot = TelegramBot(db, instagram_client)
     application = bot.create_application()
     application.run_polling()
