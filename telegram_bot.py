@@ -377,10 +377,11 @@ Let's get started! Use /connect to link your Instagram account.
 # Entry point to start the bot when running the script directly
 if __name__ == "__main__":
     db = Database(Config.MONGODB_URI)
-    instagram_client = InstagramClient(
-        Config.INSTAGRAM_APP_ID,
-        Config.INSTAGRAM_APP_SECRET,
-        Config.REDIRECT_URI
+    class InstagramClient:
+    def __init__(self, app_id, app_secret, redirect_uri):
+        self.app_id = app_id
+        self.app_secret = app_secret
+        self.redirect_uri = redirect_uri
     )
     bot = TelegramBot(db, instagram_client)
     application = bot.create_application()
