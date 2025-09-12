@@ -378,8 +378,8 @@ Let's get started! Use /connect to link your Instagram account.
 if __name__ == "__main__":
     db = Database(Config.MONGODB_URI)
     instagram_client = InstagramClient(
-        Config.INSTAGRAM_CLIENT_ID,
-        Config.INSTAGRAM_CLIENT_SECRET,
+        Config.INSTAGRAM_APP_ID,
+        Config.INSTAGRAM_APP_SECRET,
         Config.REDIRECT_URI
     )
     bot = TelegramBot(db, instagram_client)
