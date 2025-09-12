@@ -372,3 +372,16 @@ Let's get started! Use /connect to link your Instagram account.
         application.add_handler(CallbackQueryHandler(self.handle_callback))
         
         return application
+
+
+# Entry point to start the bot when running the script directly
+if __name__ == "__main__":
+    db = Database(Config.DATABASE_URL)
+    instagram_client = InstagramClient(
+        Config.INSTAGRAM_CLIENT_ID,
+        Config.INSTAGRAM_CLIENT_SECRET,
+        Config.REDIRECT_URI
+    )
+    bot = TelegramBot(db, instagram_client)
+    application = bot.create_application()
+    application.run_polling()
