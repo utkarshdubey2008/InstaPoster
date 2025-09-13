@@ -374,15 +374,18 @@ Let's get started! Use /connect to link your Instagram account.
         return application
 # ... rest of the file remains same until the main section ...
 
+
 if __name__ == "__main__":
-    # Initialize database 
-    from config import Config
-    from database import Database
-    
+    # Initialize database with Supabase
     db = Database(Config.SUPABASE_URL, Config.SUPABASE_KEY)
     
-    instagram_client = InstagramClient()
-    
+    # Initialize InstagramClient
+    instagram_client = InstagramClient(
+        Config.INSTAGRAM_APP_ID,
+        Config.INSTAGRAM_APP_SECRET,
+        Config.REDIRECT_URI
+    )
+
     # Initialize Telegram bot
     bot = TelegramBot(db, instagram_client)
     application = bot.create_application()
