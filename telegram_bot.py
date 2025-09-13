@@ -376,7 +376,7 @@ Let's get started! Use /connect to link your Instagram account.
 # Entry point to start the bot when running the script directly
 if __name__ == "__main__":
     # Initialize database
-    db = Database(Config.MONGODB_URI)
+        db = Database(Config.SUPABASE_URL, Config.SUPABASE_KEY)
 
     # Define InstagramClient correctly
     class InstagramClient:
