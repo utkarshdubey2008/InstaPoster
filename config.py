@@ -12,8 +12,9 @@ class Config:
     INSTAGRAM_APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET')
     REDIRECT_URI = os.getenv('REDIRECT_URI')
     
-    # MongoDB
-    MONGODB_URI = os.getenv('MONGODB_URI')
+    # Supabase
+    SUPABASE_URL = os.getenv('SUPABASE_URL')
+    SUPABASE_KEY = os.getenv('SUPABASE_KEY')
     
     # Security
     SECRET_KEY = os.getenv('SECRET_KEY', 'fallback-secret-key')
@@ -33,7 +34,8 @@ class Config:
             'TELEGRAM_BOT_TOKEN',
             'INSTAGRAM_APP_ID', 
             'INSTAGRAM_APP_SECRET',
-            'MONGODB_URI',
+            'SUPABASE_URL',
+            'SUPABASE_KEY',
             'REDIRECT_URI'
         ]
         
