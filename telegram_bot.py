@@ -373,6 +373,12 @@ Let's get started! Use /connect to link your Instagram account.
         
         return application
 # ... rest of the file remains same until the main section ...
+# Define InstagramClient class (outside main block)
+class InstagramClient:
+    def __init__(self, app_id, app_secret, redirect_uri):
+        self.app_id = app_id
+        self.app_secret = app_secret
+        self.redirect_uri = redirect_uri
 
 
 if __name__ == "__main__":
@@ -380,12 +386,12 @@ if __name__ == "__main__":
     db = Database(Config.SUPABASE_URL, Config.SUPABASE_KEY)
     
     # Initialize InstagramClient
-    class InstagramClient:
-    def __init__(self, app_id, app_secret, redirect_uri):
-        self.app_id = app_id
-        self.app_secret = app_secret
-        self.redirect_uri = redirect_uri
-        
+    instagram_client = InstagramClient(
+        Config.INSTAGRAM_APP_ID,
+        Config.INSTAGRAM_APP_SECRET,
+        Config.REDIRECT_URI
+    )
+    
     # Initialize Telegram bot
     bot = TelegramBot(db, instagram_client)
     application = bot.create_application()
