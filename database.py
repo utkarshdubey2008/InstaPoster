@@ -1,122 +1,92 @@
 from datetime import datetime
-import os
+from postgrest import PostgrestClient
 from supabase import create_client, Client
 
 class Database:
-    def __init__(self, supabase_url: str, supabase_key: str):
+    def __init__(self, url: str, key: str):
         """Initialize Supabase client"""
-        self.supabase: Client = create_client(supabase_url, supabase_key)
+        self.supabase: Client = create_client(url, key)
+        self.init_tables()
     
-    def get_user(self, telegram_user_id: str) -> dict:
-        """Get user by telegram ID"""
-        response = self.supabase.table('users') \
-            .select('*') \
-            .eq('telegram_user_id', str(telegram_user_id)) \
-            .execute()
+    def init_tables(self):
+        """Initialize database tables if they don't exist"""
+        # Create users table
+        self.supabase.table("users").insert({
+            "id": "schema",  # Dummy row for schema creation
+            "telegram_id": "bigint",
+            "telegram_username": "text",
+            "instagram_id": "text",
+            "instagram_username": "text", 
+            "instagram_access_token": "text",
+            "last_used": "timestamp",
+            "is_connected": "boolean"
+        }).execute()
         
-        if response.data:
-            return response.data[0]
-        return None
-    
-    def create_user(self, telegram_user_id: str, telegram_username: str = None) -> dict:
+        # Create oauth_states table
+        self.supabase.table("oauth_states").insert({
+            "id": "schema",
+            "state": "text",
+            "telegram_user_id": "bigint",
+            "created_at": "timestamp"
+        }).execute()
+        
+        # Create post_history table
+        self.supabase.table("post_history").insert({
+            "id": "schema",
+            "telegram_user_id": "bigint",
+            "media_id": "text",
+            "caption": "text",
+            "success": "boolean",
+            "error_message": "text",
+            "created_at": "timestamp"
+        }).execute()
+
+    def get_user(self, telegram_id: int):
+        """Get user by Telegram ID"""
+        return self.supabase.table("users").select("*").eq("telegram_id", telegram_id).single().execute()
+
+    def create_user(self, telegram_id: int, telegram_username: str):
         """Create new user"""
-        user_data = {
-            'telegram_user_id': str(telegram_user_id),
-            'telegram_username': telegram_username,
-            'instagram_user_id': None,
-            'instagram_username': None,
-            'instagram_access_token': None,
-            'is_connected': False,
-            'created_at': datetime.utcnow().isoformat(),
-            'last_used': datetime.utcnow().isoformat()
-        }
-        
-        response = self.supabase.table('users') \
-            .insert(user_data) \
-            .execute()
-            
-        if response.data:
-            return response.data[0]
-        return None
-    
-    def update_user_instagram(self, telegram_user_id: str, instagram_user_id: str, 
-                            instagram_username: str, access_token: str) -> bool:
-        """Update user's Instagram connection"""
-        update_data = {
-            'instagram_user_id': instagram_user_id,
-            'instagram_username': instagram_username,
-            'instagram_access_token': access_token,
-            'is_connected': bool(access_token),
-            'last_used': datetime.utcnow().isoformat()
-        }
-        
-        response = self.supabase.table('users') \
-            .update(update_data) \
-            .eq('telegram_user_id', str(telegram_user_id)) \
-            .execute()
-            
-        return bool(response.data)
-    
-    def store_oauth_state(self, state: str, telegram_user_id: str) -> bool:
-        """Store OAuth state temporarily"""
-        oauth_data = {
-            'state': state,
-            'telegram_user_id': str(telegram_user_id),
-            'created_at': datetime.utcnow().isoformat()
-        }
-        
-        response = self.supabase.table('oauth_states') \
-            .insert(oauth_data) \
-            .execute()
-            
-        return bool(response.data)
-    
-    def get_oauth_state(self, state: str) -> dict:
+        return self.supabase.table("users").insert({
+            "telegram_id": telegram_id,
+            "telegram_username": telegram_username,
+            "is_connected": False,
+            "last_used": datetime.utcnow().isoformat()
+        }).execute()
+
+    def update_user_instagram(self, telegram_id: int, instagram_id: str, instagram_username: str, access_token: str):
+        """Update user's Instagram credentials"""
+        return self.supabase.table("users").update({
+            "instagram_id": instagram_id,
+            "instagram_username": instagram_username,
+            "instagram_access_token": access_token,
+            "is_connected": True,
+            "last_used": datetime.utcnow().isoformat()
+        }).eq("telegram_id", telegram_id).execute()
+
+    def store_oauth_state(self, state: str, telegram_user_id: int):
+        """Store OAuth state"""
+        return self.supabase.table("oauth_states").insert({
+            "state": state,
+            "telegram_user_id": telegram_user_id,
+            "created_at": datetime.utcnow().isoformat()
+        }).execute()
+
+    def get_oauth_state(self, state: str):
         """Get OAuth state"""
-        response = self.supabase.table('oauth_states') \
-            .select('*') \
-            .eq('state', state) \
-            .execute()
-            
-        if response.data:
-            return response.data[0]
-        return None
-    
-    def delete_oauth_state(self, state: str) -> bool:
+        return self.supabase.table("oauth_states").select("*").eq("state", state).single().execute()
+
+    def delete_oauth_state(self, state: str):
         """Delete OAuth state"""
-        response = self.supabase.table('oauth_states') \
-            .delete() \
-            .eq('state', state) \
-            .execute()
-            
-        return bool(response.data)
-    
-    def add_post_history(self, telegram_user_id: str, instagram_media_id: str, 
-                        caption: str, success: bool = True, error_message: str = None) -> bool:
+        return self.supabase.table("oauth_states").delete().eq("state", state).execute()
+
+    def add_post_history(self, telegram_user_id: int, media_id: str, caption: str, success: bool, error_message: str = None):
         """Add post to history"""
-        post_data = {
-            'telegram_user_id': str(telegram_user_id),
-            'instagram_media_id': instagram_media_id,
-            'caption': caption,
-            'media_type': 'REEL',
-            'success': success,
-            'error_message': error_message,
-            'posted_at': datetime.utcnow().isoformat()
-        }
-        
-        response = self.supabase.table('post_history') \
-            .insert(post_data) \
-            .execute()
-            
-        return bool(response.data)
-    
-    def get_user_posts(self, telegram_user_id: str, limit: int = 10) -> list:
-        """Get user's recent posts"""
-        response = self.supabase.table('post_history') \
-            .select('*') \
-            .eq('telegram_user_id', str(telegram_user_id)) \
-            .order('posted_at', desc=True) \
-            .limit(limit) \
-            .execute()
-            
-        return response.data if response.data else []
+        return self.supabase.table("post_history").insert({
+            "telegram_user_id": telegram_user_id,
+            "media_id": media_id,
+            "caption": caption,
+            "success": success,
+            "error_message": error_message,
+            "created_at": datetime.utcnow().isoformat()
+        }).execute()
