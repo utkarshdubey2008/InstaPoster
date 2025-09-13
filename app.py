@@ -265,6 +265,15 @@ def delete_callback():
     """Handle data deletion request"""
     return jsonify({"status": "ok"})
 
+# ... rest of imports remain same ...
+
+# Initialize components
+print("Connecting to Supabase...")
+database = Database(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+print("Supabase connected successfully!")
+
+# ... rest of the file remains same ...
+
 if __name__ == '__main__':
     # Start Telegram bot in background thread
     bot_thread = threading.Thread(target=run_telegram_bot, daemon=True)
