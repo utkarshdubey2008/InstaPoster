@@ -374,23 +374,13 @@ Let's get started! Use /connect to link your Instagram account.
         return application
 
 # Entry point to start the bot when running the script directly
+# Replace the existing if __name__ == "__main__": block with this:
 if __name__ == "__main__":
-    # Initialize database
-        db = Database(Config.SUPABASE_URL, Config.SUPABASE_KEY)
-
-    # Define InstagramClient correctly
-    class InstagramClient:
-        def __init__(self, app_id, app_secret, redirect_uri):
-            self.app_id = app_id
-            self.app_secret = app_secret
-            self.redirect_uri = redirect_uri
+    # Initialize database with Supabase credentials
+    db = Database(Config.SUPABASE_URL, Config.SUPABASE_KEY)
 
     # Initialize InstagramClient
-    instagram_client = InstagramClient(
-        Config.INSTAGRAM_APP_ID,
-        Config.INSTAGRAM_APP_SECRET,
-        Config.REDIRECT_URI
-    )
+    instagram_client = InstagramClient()  # Using the existing InstagramClient class from instagram_client.py
 
     # Initialize Telegram bot
     bot = TelegramBot(db, instagram_client)
