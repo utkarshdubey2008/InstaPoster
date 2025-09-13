@@ -3,7 +3,7 @@ import threading
 import asyncio
 from flask import Flask, request, jsonify, render_template_string
 from config import Config
-from database import Database
+from database import SupabaseClient
 from instagram_client import InstagramClient
 from telegram_bot import TelegramBot
 
@@ -19,9 +19,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 
 # Initialize components
-print("Connecting to MongoDB...")
-database = Database(Config.MONGODB_URI)
-print("MongoDB connected successfully!")
+print("Connecting to Supabase...")
+database = SupabaseClient(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+print("Supabase connected successfully!")
 
 instagram_client = InstagramClient()
 telegram_bot = TelegramBot(database, instagram_client)
@@ -82,7 +82,7 @@ def home():
             </div>
             
             <div class="status success">
-                ✅ Bot is running successfully on Render!
+                ✅ Bot is running successfully!
             </div>
             
             <h2>📱 How to use:</h2>
@@ -111,8 +111,8 @@ def home():
             <div class="status info">
                 <strong>🌐 Callback URL:</strong> {{ request.url_root }}oauth/callback<br>
                 <strong>⚡ Status:</strong> Online<br>
-                <strong>🏗️ Platform:</strong> Render<br>
-                <strong>📊 Database:</strong> MongoDB Atlas
+                <strong>🏗️ Platform:</strong> Supabase<br>
+                <strong>📊 Storage:</strong> Supabase Storage
             </div>
         </div>
     </body>
@@ -121,10 +121,10 @@ def home():
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint for Render"""
+    """Health check endpoint"""
     try:
-        # Test MongoDB connection
-        database.users.find_one({}, {"_id": 1})
+        # Test Supabase connection by fetching a user
+        database.check_connection()
         return jsonify({
             "status": "healthy",
             "database": "connected",
@@ -166,7 +166,7 @@ def oauth_callback():
         </html>
         """), 400
     
-    # Verify state
+    # Verify state from Supabase
     oauth_state = database.get_oauth_state(state)
     if not oauth_state:
         return render_template_string("""
@@ -195,7 +195,7 @@ def oauth_callback():
         if not user_info:
             raise Exception("Failed to get user info")
         
-        # Update database
+        # Update user in Supabase
         database.update_user_instagram(
             telegram_user_id,
             user_info['id'],
