@@ -7,3 +7,4 @@ gunicorn
 pillow
 moviepy
 dnspython
+supabase
