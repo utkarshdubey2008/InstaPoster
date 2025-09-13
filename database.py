@@ -1,111 +1,122 @@
-import os
-from pymongo import MongoClient
 from datetime import datetime
-import secrets
+import os
+from supabase import create_client, Client
 
 class Database:
-    def __init__(self, mongodb_uri):
-        self.client = MongoClient(mongodb_uri)
-        self.db = self.client.telegram_instagram_bot
-        
-        # Collections
-        self.users = self.db.users
-        self.oauth_states = self.db.oauth_states
-        self.post_history = self.db.post_history
-        
-        # Create indexes
-        self.users.create_index("telegram_user_id", unique=True)
-        self.oauth_states.create_index("state", unique=True)
-        self.oauth_states.create_index("created_at", expireAfterSeconds=3600)  # Auto-delete after 1 hour
+    def __init__(self, supabase_url: str, supabase_key: str):
+        """Initialize Supabase client"""
+        self.supabase: Client = create_client(supabase_url, supabase_key)
     
-    def get_user(self, telegram_user_id):
+    def get_user(self, telegram_user_id: str) -> dict:
         """Get user by telegram ID"""
-        return self.users.find_one({"telegram_user_id": str(telegram_user_id)})
+        response = self.supabase.table('users') \
+            .select('*') \
+            .eq('telegram_user_id', str(telegram_user_id)) \
+            .execute()
+        
+        if response.data:
+            return response.data[0]
+        return None
     
-    def create_user(self, telegram_user_id, telegram_username=None):
+    def create_user(self, telegram_user_id: str, telegram_username: str = None) -> dict:
         """Create new user"""
         user_data = {
-            "telegram_user_id": str(telegram_user_id),
-            "telegram_username": telegram_username,
-            "instagram_user_id": None,
-            "instagram_username": None,
-            "instagram_access_token": None,
-            "is_connected": False,
-            "created_at": datetime.utcnow(),
-            "last_used": datetime.utcnow()
+            'telegram_user_id': str(telegram_user_id),
+            'telegram_username': telegram_username,
+            'instagram_user_id': None,
+            'instagram_username': None,
+            'instagram_access_token': None,
+            'is_connected': False,
+            'created_at': datetime.utcnow().isoformat(),
+            'last_used': datetime.utcnow().isoformat()
         }
         
-        try:
-            result = self.users.insert_one(user_data)
-            user_data["_id"] = result.inserted_id
-            return user_data
-        except Exception as e:
-            print(f"Error creating user: {e}")
-            return None
+        response = self.supabase.table('users') \
+            .insert(user_data) \
+            .execute()
+            
+        if response.data:
+            return response.data[0]
+        return None
     
-    def update_user_instagram(self, telegram_user_id, instagram_user_id, instagram_username, access_token):
+    def update_user_instagram(self, telegram_user_id: str, instagram_user_id: str, 
+                            instagram_username: str, access_token: str) -> bool:
         """Update user's Instagram connection"""
         update_data = {
-            "$set": {
-                "instagram_user_id": instagram_user_id,
-                "instagram_username": instagram_username,
-                "instagram_access_token": access_token,
-                "is_connected": True if access_token else False,
-                "last_used": datetime.utcnow()
-            }
+            'instagram_user_id': instagram_user_id,
+            'instagram_username': instagram_username,
+            'instagram_access_token': access_token,
+            'is_connected': bool(access_token),
+            'last_used': datetime.utcnow().isoformat()
         }
         
-        result = self.users.update_one(
-            {"telegram_user_id": str(telegram_user_id)}, 
-            update_data
-        )
-        return result.modified_count > 0
+        response = self.supabase.table('users') \
+            .update(update_data) \
+            .eq('telegram_user_id', str(telegram_user_id)) \
+            .execute()
+            
+        return bool(response.data)
     
-    def store_oauth_state(self, state, telegram_user_id):
+    def store_oauth_state(self, state: str, telegram_user_id: str) -> bool:
         """Store OAuth state temporarily"""
         oauth_data = {
-            "state": state,
-            "telegram_user_id": str(telegram_user_id),
-            "created_at": datetime.utcnow()
+            'state': state,
+            'telegram_user_id': str(telegram_user_id),
+            'created_at': datetime.utcnow().isoformat()
         }
         
-        try:
-            self.oauth_states.insert_one(oauth_data)
-            return True
-        except Exception as e:
-            print(f"Error storing OAuth state: {e}")
-            return False
+        response = self.supabase.table('oauth_states') \
+            .insert(oauth_data) \
+            .execute()
+            
+        return bool(response.data)
     
-    def get_oauth_state(self, state):
+    def get_oauth_state(self, state: str) -> dict:
         """Get OAuth state"""
-        return self.oauth_states.find_one({"state": state})
+        response = self.supabase.table('oauth_states') \
+            .select('*') \
+            .eq('state', state) \
+            .execute()
+            
+        if response.data:
+            return response.data[0]
+        return None
     
-    def delete_oauth_state(self, state):
+    def delete_oauth_state(self, state: str) -> bool:
         """Delete OAuth state"""
-        result = self.oauth_states.delete_one({"state": state})
-        return result.deleted_count > 0
+        response = self.supabase.table('oauth_states') \
+            .delete() \
+            .eq('state', state) \
+            .execute()
+            
+        return bool(response.data)
     
-    def add_post_history(self, telegram_user_id, instagram_media_id, caption, success=True, error_message=None):
+    def add_post_history(self, telegram_user_id: str, instagram_media_id: str, 
+                        caption: str, success: bool = True, error_message: str = None) -> bool:
         """Add post to history"""
         post_data = {
-            "telegram_user_id": str(telegram_user_id),
-            "instagram_media_id": instagram_media_id,
-            "caption": caption,
-            "media_type": "REEL",
-            "success": success,
-            "error_message": error_message,
-            "posted_at": datetime.utcnow()
+            'telegram_user_id': str(telegram_user_id),
+            'instagram_media_id': instagram_media_id,
+            'caption': caption,
+            'media_type': 'REEL',
+            'success': success,
+            'error_message': error_message,
+            'posted_at': datetime.utcnow().isoformat()
         }
         
-        try:
-            self.post_history.insert_one(post_data)
-            return True
-        except Exception as e:
-            print(f"Error adding post history: {e}")
-            return False
+        response = self.supabase.table('post_history') \
+            .insert(post_data) \
+            .execute()
+            
+        return bool(response.data)
     
-    def get_user_posts(self, telegram_user_id, limit=10):
+    def get_user_posts(self, telegram_user_id: str, limit: int = 10) -> list:
         """Get user's recent posts"""
-        return list(self.post_history.find(
-            {"telegram_user_id": str(telegram_user_id)}
-        ).sort("posted_at", -1).limit(limit))
+        response = self.supabase.table('post_history') \
+            .select('*') \
+            .eq('telegram_user_id', str(telegram_user_id)) \
+            .order('posted_at', desc=True) \
+            .limit(limit) \
+            .execute()
+            
+        return response.data if response.data else []
